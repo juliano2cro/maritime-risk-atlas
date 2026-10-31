@@ -1,0 +1,52 @@
+[
+    {
+        "name": "Port of Shanghai",
+        "lat": 31.2304,
+        "lng": 121.4737
+    },
+    {
+        "name": "Port of Singapore",
+        "lat": 1.2644,
+        "lng": 103.8200
+    },
+    {
+        "name": "Port of Rotterdam",
+        "lat": 51.947,
+        "lng": 4.142
+    },
+    {
+        "name": "Port of Antwerp",
+        "lat": 51.2637,
+        "lng": 4.4006
+    },
+    {
+        "name": "Port of Los Angeles",
+        "lat": 33.7361,
+        "lng": -118.2632
+    },
+    {
+        "name": "Port of Hamburg",
+        "lat": 53.5461,
+        "lng": 9.9661
+    },
+    {
+        "name": "Port of Dubai",
+        "lat": 25.0657,
+        "lng": 55.1713
+    },
+    {
+        "name": "Port of Durban",
+        "lat": -29.8783,
+        "lng": 31.0222
+    },
+    {
+        "name": "Port of Mumbai",
+        "lat": 18.9657,
+        "lng": 72.8219
+    },
+    {
+        "name": "Port of Marseille",
+        "lat": 43.3426,
+        "lng": 5.3619
+    }
+]

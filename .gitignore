@@ -1,0 +1,31 @@
+# Dependencies and environments
+node_modules/
+.venv/
+venv/
+
+# Build and caches
+dist/
+build/
+.react-router/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Generated artifacts
+coverage/
+htmlcov/
+*.log
+services/ml/best_model/
+services/ml/mlruns/
+
+# Operating system files
+.DS_Store
+Thumbs.db

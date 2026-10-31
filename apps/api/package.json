@@ -1,0 +1,35 @@
+{
+  "name": "@maritime-risk-atlas/api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "@types/geodesy": "^2.2.8",
+    "@types/node": "^24.9.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@types/cors": "^2.8.19",
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "cubic-spline": "^3.0.3",
+    "express": "^5.1.0",
+    "geodesy": "^2.4.0",
+    "js-spline": "^1.0.1",
+    "maplibre-gl": "^5.13.0",
+    "node-fetch": "^2.7.0"
+  },
+  "private": true
+}
