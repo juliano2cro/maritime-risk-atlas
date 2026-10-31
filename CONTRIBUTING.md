@@ -24,4 +24,4 @@ Ne jamais assimiler une prédiction absente à un risque nul. Documenter la cibl
 
 ## Dépendances
 
-Utiliser les workspaces npm depuis la racine. Les anciens verrous dans les applications sont conservés temporairement ; les remplacer par un verrou racine après installation et validation à l’étape 2. Ne pas supprimer les verrous sans produire leur remplacement.
+Utiliser les workspaces npm depuis la racine. Le fichier `package-lock.json` racine est le verrou unique des workspaces. Utiliser `npm ci` pour reproduire l’installation ; ne pas ajouter de verrou dans les applications.

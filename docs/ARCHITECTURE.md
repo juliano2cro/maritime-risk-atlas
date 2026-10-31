@@ -12,6 +12,10 @@ Le moteur maritime aura une responsabilité distincte des prédictions : obtenir
 
 ## État de validation
 
-La structure et les fichiers de configuration ont été vérifiés. Le code applicatif provient du prototype et n’est pas encore validé par compilation ou exécution. Node.js et npm ne sont pas disponibles dans l’environnement de travail au moment de cette étape. Les configurations Docker existantes restent à adapter au lancement du monorepo.
+Node.js 22 et Python 3.12 sont les environnements de référence pour le lancement local. Les adresses de l’interface et du service ML sont configurables via les exemples `.env`. Le verrou npm racine remplace les anciens verrous imbriqués.
 
-Le nouveau dépôt racine possède son propre historique. Les historiques archivés des anciens dépôts ont été supprimés explicitement ; aucun dépôt imbriqué ne doit être ajouté.
+Le service ML démarre sans modèle et distingue disponibilité du processus (`/health`) et du modèle (`/ready`). Son contrat SHAP expose un scalaire `expected_value` et une liste de contributions alignée sur `feature_names`. Les modèles incompatibles avec TreeExplainer peuvent prédire, mais l’explication retourne HTTP 503.
+
+Voir `STEP-02.md` pour les résultats de vérification. Les configurations Docker héritées restent à adapter et à valider.
+
+Le monorepo possède un historique Git unique, sans les historiques des anciens dépôts.

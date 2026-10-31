@@ -1,31 +1,18 @@
+import type { Feature, LineString } from "geojson";
 import { Link } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Chart from "chart.js/auto";
 
-// === BACKEND CALLS (compatibles avec ton nouveau backend Express) ===
+import { post } from "../services/backend";
 
-async function sendCoords(points: { lat: number; lng: number }[], spacing: number) {
-  const res = await fetch("http://localhost:3000/map/send-coords", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ points, spacing }),
-  });
-
-  if (!res.ok) throw new Error("Erreur sendCoords");
-  return res.json();
+function sendCoords(points: { lat: number; lng: number }[], spacing: number) {
+  return post<{ all_points: { lat: number; lng: number }[] }>("/map/send-coords", { points, spacing });
 }
 
-async function predictRisk(coords: { lat: number; lng: number }[]) {
-  const res = await fetch("http://localhost:3000/map/predict-risk", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ coords }),
-  });
-
-  if (!res.ok) throw new Error("Erreur predictRisk");
-  return res.json();
+function predictRisk(coords: { lat: number; lng: number }[]) {
+  return post<{ predictions: Prediction[]; global_risk: number | null }>("/map/predict-risk", { coords });
 }
 
 interface Prediction {
@@ -142,24 +129,34 @@ export default function Home() {
 
   // === GET FULL PATH ===
   useEffect(() => {
-    if (points.length === 0) {
+    if (points.length < 2) {
       setFullPath([]);
       return;
     }
 
+    let cancelled = false;
+    setPredictions([]);
     const getFullPath = async () => {
-      const res = await sendCoords(points, spacing);
-      setFullPath(res.all_points);
+      try {
+        const res = await sendCoords(points, spacing);
+        if (!cancelled) setFullPath(res.all_points);
+      } catch {
+        if (!cancelled) {
+          setFullPath([]);
+          setStatusMessage("Impossible de joindre l’API pour préparer le trajet.");
+        }
+      }
     };
 
-    getFullPath();
+    void getFullPath();
+    return () => { cancelled = true; };
   }, [points, spacing]); // Add spacing to dependency array
 
   // === DRAW LINE ===
   useEffect(() => {
     if (!lineRef.current) return;
 
-    let features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+    let features: Feature<LineString>[] = [];
 
     if (predictions.length > 1) {
       // Create segments with risk property
@@ -230,6 +227,8 @@ export default function Home() {
 
   // === REMOVE LAST POINT ===
   const deleteLastPoint = () => {
+    setPredictions([]);
+    setStatusMessage("");
     setPoints((currentPoints) => currentPoints.slice(0, -1));
   };
 
@@ -243,12 +242,14 @@ export default function Home() {
       const res = await predictRisk(fullPath);
       setPredictions(res.predictions);
 
-      if (res.global_risk > 0.5) {
+      if (res.global_risk === null) {
+        setStatusMessage("Analyse indisponible : aucun score exploitable.");
+      } else if (res.global_risk > 0.5) {
         setStatusMessage(
-          "⚠️ Attention : chemin risqué, probabilité élevée d'attaque !"
+          "Score élevé selon le modèle historique. Ce score ne mesure pas une probabilité d’attaque pendant le voyage."
         );
       } else {
-        setStatusMessage("✔️ Chemin sûr selon le modèle.");
+        setStatusMessage("Score faible selon le modèle historique. La sécurité du trajet n’est pas garantie.");
       }
     } catch (error) {
       console.error("predictRisk error:", error);

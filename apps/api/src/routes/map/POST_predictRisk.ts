@@ -54,7 +54,10 @@ export async function predictRiskHandler(req: Request, res: Response) {
       // await new Promise((r) => setTimeout(r, 50));
     }
 
-    const probs = results.map((r) => (typeof r.probability_success === "number" ? r.probability_success : 0));
+    if (results.some((r) => r.probability_success === null)) {
+      return res.status(503).json({ error: "prediction_unavailable" });
+    }
+    const probs = results.map((r) => r.probability_success as number);
     const global_risk = probs.length ? probs.reduce((a, b) => a + b, 0) / probs.length : null;
 
     return res.json({ predictions: results, global_risk });

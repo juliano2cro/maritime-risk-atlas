@@ -3,15 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import Chart from "chart.js/auto";
 
-async function getExplanation(lat: number, lng: number) {
-  const res = await fetch("http://localhost:3000/map/explain", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lat, lng }),
-  });
+import { post } from "../services/backend";
 
-  if (!res.ok) throw new Error("Erreur getExplanation");
-  return res.json();
+function getExplanation(lat: number, lng: number) {
+  return post<Explanation>("/map/explain", { lat, lng });
 }
 
 interface Explanation {
@@ -19,8 +14,8 @@ interface Explanation {
     latitude: number;
     longitude: number;
   };
-  expected_value: number | number[];
-  shap_values: number[][];
+  expected_value: number;
+  shap_values: number[];
   feature_names: string[];
 }
 
@@ -55,10 +50,8 @@ export default function ExplainPage() {
       chartInstance.current.destroy();
     }
 
-    const shapValues = explanation.shap_values[0][1]; 
-    const expectedValue = Array.isArray(explanation.expected_value)
-      ? explanation.expected_value[1] // class 1
-      : explanation.expected_value;
+    const shapValues = explanation.shap_values;
+    const expectedValue = explanation.expected_value;
     const featureNames = explanation.feature_names || ['longitude', 'latitude'];
     
     // Detect dark mode for chart text/grid colors

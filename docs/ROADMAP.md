@@ -4,9 +4,10 @@
 
 - [x] Regrouper interface, API et service ML dans une structure commune.
 - [x] Supprimer les anciens historiques et démarrer un historique unique.
-- [ ] Installer les dépendances et produire un verrou npm commun.
-- [ ] Corriger les erreurs de compilation existantes, notamment les types SHAP.
-- [ ] Centraliser la configuration et ajouter CI et Docker Compose.
+- [x] Installer les dépendances et produire un verrou npm commun.
+- [x] Corriger les erreurs de compilation existantes, notamment les types SHAP.
+- [x] Centraliser la configuration locale et vérifier le démarrage des services.
+- [ ] Ajouter CI et Docker Compose.
 
 ## 2 — Navigation maritime
 

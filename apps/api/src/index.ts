@@ -6,7 +6,7 @@ import mapRouter from "./routes/map/routes";
 const app = express();
 const port = Number(process.env.PORT || 3000);
 
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({ origin: process.env.WEB_ORIGIN || "http://localhost:5173" }));
 app.use(express.json());
 
 app.get("/health", (_, res) => res.json({ status: "ok" }));

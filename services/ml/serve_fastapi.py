@@ -1,137 +1,90 @@
-import mlflow
+"""Local inference service. No model means unavailable, never a fabricated score."""
+from contextlib import asynccontextmanager
+import logging
+import os
+from pathlib import Path
+
 import mlflow.sklearn
 import numpy as np
-import shap
-
-from fastapi import FastAPI
-from pydantic import BaseModel
-
 import pandas as pd
+import shap
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
+MODEL_PATH = Path(os.environ.get("MODEL_PATH", str(Path(__file__).parent / "best_model")))
+model = None
+explainer = None
 
 
-# ============================================================
-# 1 FASTAPI INIT
-# ============================================================
+@asynccontextmanager
+async def lifespan(app):
+    global model, explainer
+    model = None
+    explainer = None
+    if MODEL_PATH.exists():
+        model = mlflow.sklearn.load_model(str(MODEL_PATH))
+        try:
+            explainer = shap.TreeExplainer(model)
+        except Exception:
+            logger.warning("SHAP tree explanation unavailable for this model", exc_info=True)
+    else:
+        logger.warning("No trained model at %s; inference returns HTTP 503", MODEL_PATH)
+    yield
 
-app = FastAPI(
-    title="Piracy Risk Prediction API",
-    description="API pour prédire la probabilité de succès d'une attaque pirate.",
-    version="1.0.0"
-)
 
+app = FastAPI(title="Maritime Risk Atlas ML API", lifespan=lifespan)
 
-# ============================================================
-# 2 LOAD BEST MODEL
-# ============================================================
-
-MODEL_PATH = "best_model"
-
-print("[INFO] Loading model from best_model/ ...")
-model = mlflow.sklearn.load_model(MODEL_PATH)
-print("[INFO] Model loaded.")
-
-# SHAP explainer
-print("[INFO] Initializing SHAP TreeExplainer...")
-explainer = shap.TreeExplainer(model)
-print("[INFO] SHAP explainer ready.")
-
-# ============================================================
-# 3 INPUT SCHEMA
-# ============================================================
 
 class AttackInput(BaseModel):
-    longitude: float
-    latitude: float
+    longitude: float = Field(ge=-180, le=180, allow_inf_nan=False)
+    latitude: float = Field(ge=-90, le=90, allow_inf_nan=False)
 
 
-# ============================================================
-# 4 HEALTH CHECK
-# ============================================================
+def features(point):
+    return pd.DataFrame([{"longitude": point.longitude, "latitude": point.latitude}])
+
 
 @app.get("/health")
 def health():
-    try:
-        test_df = pd.DataFrame([{"longitude": 115.25, "latitude": 19.67}])
-        _ = model.predict(test_df)
-
-        return {
-            "status": "ok",
-            "api": "running",
-            "model_loaded": True,
-            "model_path": MODEL_PATH
-        }
-
-    except Exception as e:
-        return {
-            "status": "error",
-            "api": "running",
-            "model_loaded": False,
-            "error": str(e)
-        }
+    return {"status": "ok", "model_loaded": model is not None}
 
 
-# ============================================================
-# 5 PREDICT ENDPOINT
-# ============================================================
+@app.get("/ready")
+def ready():
+    if model is None:
+        return JSONResponse(status_code=503, content={"status": "model_unavailable"})
+    model.predict(features(AttackInput(longitude=0, latitude=0)))
+    return {"status": "ready"}
 
-@app.post("/predict")
-def predict(input_data: AttackInput):
-
-    # Convert into DataFrame for sklearn
-    X = pd.DataFrame([{
-        "longitude": input_data.longitude,
-        "latitude": input_data.latitude
-    }])
-
-    proba = model.predict_proba(X)[0][1]   # probability success
-    pred = int(model.predict(X)[0])
-
-    return {
-        "prediction": pred,
-        "probability_success": float(proba)
-    }
-
-# ============================================================
-# 6 ROOT
-# ============================================================
 
 @app.get("/")
 def root():
-    return {
-        "message": "Piracy Prediction API is running.",
-        "endpoints": ["/predict", "/health"]
-    }
+    return {"message": "Maritime Risk Atlas ML API", "docs": "/docs"}
+
+
+@app.post("/predict")
+def predict(point: AttackInput):
+    if model is None:
+        raise HTTPException(503, "No trained model available")
+    X = features(point)
+    return {"prediction": int(model.predict(X)[0]),
+            "probability_success": float(model.predict_proba(X)[0][1])}
+
 
 @app.post("/explain")
 def explain(point: AttackInput):
-    X = pd.DataFrame([{
-        "longitude": point.longitude,
-        "latitude": point.latitude
-    }])
-
-    shap_values = explainer.shap_values(X)
-
-    # For binary classification, shap_values is a list of 2 arrays (one for each class)
-    # We return the shap values for the positive class (class 1)
-    shap_values_for_class_1 = shap_values[1] if isinstance(shap_values, list) and len(shap_values) > 1 else shap_values
-
-    # expected_value can also be a list for binary classification
-    expected_value_for_class_1 = explainer.expected_value[1] if isinstance(explainer.expected_value, list) and len(explainer.expected_value) > 1 else explainer.expected_value
-
-    return {
-        "input": {
-            "latitude": point.latitude,
-            "longitude": point.longitude
-        },
-        "expected_value": (
-            expected_value_for_class_1.tolist()
-            if hasattr(expected_value_for_class_1, "tolist")
-            else expected_value_for_class_1
-        ),
-        "shap_values": (
-            shap_values_for_class_1.tolist()
-            if hasattr(shap_values_for_class_1, "tolist")
-            else shap_values_for_class_1
-        ),
-        "feature_names": X.columns.tolist()
-    }
+    if model is None or explainer is None:
+        raise HTTPException(503, "Explanation unavailable")
+    X = features(point)
+    raw = explainer.shap_values(X)
+    if isinstance(raw, list):
+        values = np.asarray(raw[1])[0]
+    else:
+        values = np.asarray(raw)
+        values = values[0, :, 1] if values.ndim == 3 else values[0]
+    base = np.asarray(explainer.expected_value).reshape(-1)
+    return {"input": point.model_dump(),
+            "expected_value": float(base[1] if base.size > 1 else base[0]),
+            "shap_values": values.tolist(), "feature_names": X.columns.tolist()}
